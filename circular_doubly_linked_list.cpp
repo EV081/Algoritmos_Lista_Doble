@@ -115,7 +115,7 @@ public:
         temp->next = nodo;
     }
 
-    void remnove(int pos) {
+    void remove(int pos) {
 
         if (head == nullptr) {
             return;

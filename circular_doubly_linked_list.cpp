@@ -38,20 +38,36 @@ public:
 
     void pushFront(T value) {
         Node<T>* newNode = new Node<T>(value);
-        newNode->prev = nullptr;
-        newNode->next = head;
-        if (head) head->prev = newNode;
-        head = newNode;
-        if (!tail) tail = newNode;
+        if (head == nullptr) {
+            head = newNode;
+            tail = newNode;
+            newNode->next = newNode;
+            newNode->prev = newNode;
+        }
+        else {
+            newNode->next = head;
+            newNode->prev = tail;
+            head->prev = newNode;
+            tail->next = newNode;
+            head = newNode;
+        }
     }
 
     void pushBack(T value) {
         Node<T>* newNode = new Node<T>(value);
-        newNode->next = nullptr;
-        newNode->prev = tail;
-        if (tail) tail->next = newNode;
-        tail = newNode;
-        if (!head) head = newNode;
+        if (head == nullptr) {
+            head = newNode;
+            tail = newNode;
+            newNode->next = newNode;
+            newNode->prev = newNode;
+        }
+        else {
+            newNode->next = head;
+            newNode->prev = tail;
+            head->prev = newNode;
+            tail->next = newNode;
+            tail = newNode;
+        }
     }
 
     void popFront() {
@@ -64,7 +80,8 @@ public:
         }
         Node<T>* temp = head;
         head = head->next;
-        head->prev = nullptr;
+        head->prev = tail;
+        tail->next = head;
         delete temp;
     }
 
@@ -78,79 +95,83 @@ public:
         }
         Node<T>* temp = tail;
         tail = tail->prev;
-        tail->next = nullptr;
+        tail->next = head;
+        head->prev = tail;
         delete temp;
     }
 
     void insert(int pos, T num) {
-        if (!head) {
-            head = new Node<T>(num);
-            tail = head;
-            return;
-        }
-        Node<T>* nodo = new Node<T>(num);
         Node<T>* temp = head;
-        int i = 0;
-        while(i++ < pos - 1) {
-            temp = temp->next;
+
+        if (head == nullptr) {
+            Node<T>* nodo = new Node<T>(num);
+            head = tail = nodo;
+            nodo->prev = nodo;
+            nodo->next = nodo;
+            return;
         }
 
         if (pos == 0) {
-            nodo->next = head;
-            head->prev = nodo;
-            head = nodo;
+            pushFront(num);
             return;
         }
 
-        if (temp->next == nullptr) {
-            temp->next = nodo;
-            nodo->prev = temp;
-            tail = nodo;
-            return;
+        int i = 0;
+        while(i < pos - 1 and temp != tail) {
+            temp = temp->next;
+            i++;
         }
 
+        Node<T>* nodo = new Node<T>(num);
         nodo->next = temp->next;
         nodo->prev = temp;
         temp->next->prev = nodo;
         temp->next = nodo;
+
+        if (temp == tail) {
+            tail = nodo;
+        }
     }
 
-    void remove(int pos) {
-
+    void remnove(int pos) {
         if (head == nullptr) {
+            return;
+        }
+
+        if (pos == 0) {
+            popFront();
             return;
         }
 
         Node<T>* temp = head;
         int i = 0;
-        while(i++ < pos - 1) {
+        while (i++ < pos - 1 && temp != tail) {
             temp = temp->next;
         }
 
-        if (temp == head) {
-            head = temp->next;
-            if (head != nullptr) {
-                head->prev = nullptr;
-            }
+        if (temp == tail) {
+            return; //si la posición esta fuera del tamaño de lista que no haga nada
         }
 
-        else if (temp->next == nullptr) {
-            temp->prev->next = nullptr;
+        Node<T>* temp2 = temp->next;
+        if (temp2 == tail) {
+            popBack();
+            return;
         }
 
-        else {
-            temp->prev->next = temp->next;
-            temp->next->prev = temp->prev;
-        }
-
-        delete temp;
+        temp->next = temp2->next;
+        temp2->next->prev = temp;
+        delete temp2;
     }
 
     T operator[](int pos) {
         Node<T>* temp = head;
         int i = 0;
-        while(i++ < pos) {
+        while(i++ < pos and temp != tail) {
             temp = temp->next;
+        }
+        if (temp == tail) { //si la posición esta fuera del tamaño de lista que devuelva el valor de la cola xd
+            return temp->data;
         }
         return temp->data;
     }
@@ -162,7 +183,7 @@ public:
     int size() {
         Node<T>* temp = head;
         int i = 0;
-        while(temp != nullptr) {
+        while(temp != tail) {
             i++;
             temp = temp->next;
         }
@@ -170,6 +191,7 @@ public:
     }
 
     void clear() {
+        tail->next = nullptr;
         while(head != nullptr) {
             Node<T>* temp = head;
             head = head->next;
@@ -178,66 +200,69 @@ public:
     }
 
     void reverse() {
+        if (!head || head == tail) return;
+
+        Node<T>* oldHead = head;
+        Node<T>* oldTail = head->prev;
+
         Node<T>* current = head;
-        Node<T>* temp = nullptr;
+        do {
+            Node<T>* nxt = current->next;
+            current->next = current->prev;
+            current->prev = nxt;
+            current = nxt;
+        } while (current != head);
 
-        while (current != nullptr) {
-            temp = current->prev;
-            current->prev = current->next;
-            current->next = temp;
-            current = current->prev;
-        }
-
-        if (temp != nullptr) {
-            head = temp->prev;
-        }
-
-        tail = head;
-        while (tail != nullptr and tail->next != nullptr) {
-            tail = tail->next;
-        }
+        head = oldTail;
+        tail = oldHead;
     }
+
     template<typename T_>
     friend ostream& operator<<(ostream& os, const List<T_> &l);
 
     ~List() {
         clear();
     }
-
 };
 
 template<typename T>
 ostream& operator<<(ostream &os, const List<T> &l) {
-    Node<T>* temp = l.head;
-    while (temp != nullptr) {
-        os << temp->data << " ";
-        temp = temp->next;
-    }
+    if (!l.head) return os;
+    const Node<T>* cur = l.head;
+    do {
+        os << cur->data << " ";
+        cur = cur->next;
+    } while (cur != l.head);
     return os;
 }
 
 int main () {
     List<int> l1;
     l1.pushFront(30);
-    l1.pushBack(50);
     l1.pushFront(20);
     l1.pushFront(10);
     l1.pushBack(40);
 
     cout << "-------------" << endl;
+    cout << l1 << "\n";
+    l1.insert(4, 50);
 
     cout << l1 << "\n";
-
     cout << "Tamaño de lista: " << l1.size() << endl;
 
-    cout << "Agregar el 5 en la posicion 4: " <<endl;
-    l1.insert(4,5);
+    cout << "Agregar el 5 en la posicion 3: " <<endl;
+    l1.insert(3,5);
+    cout << l1 << "\n";
 
     cout << "El valor en la posicion 4:" << endl;
     cout << l1[4] << endl;
 
     l1.reverse();
-    cout << "Reverse: ---" << endl;
+    cout << "Reverse: " << endl;
+    cout << l1 << "\n";
+
+    l1.clear();
+    cout << "Clear: " << endl;
     cout << l1 << "\n";
 
     return 0;
